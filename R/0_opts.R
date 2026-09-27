@@ -197,10 +197,12 @@
   region.distrib                                                         = list(
     .default(c(0.1, 0.5, 0.4)),
     list(
-      \(x) x > 0 && length(x) == 3 && sum(x) == 1,
-      "the value should be a vector with 3 elements sum to 1"
+      \(x) is.numeric(x) && length(x) == 3 && all(is.finite(x)) &&
+        all(x >= 0 & x <= 1) &&
+        abs(sum(x) - 1) <= sqrt(.Machine$double.eps),
+      "the value should be a finite numeric vector with 3 elements in [0, 1] that sum to 1"
     ),
-    "The probability that a gene is regulated by respectively 0, 1, 2 consecutive regions."
+    "The probability that a gene is regulated by respectively 1, 2, 3 consecutive regions."
   ),
   atac.p_zero                                                            = list(
     .default(0.8),

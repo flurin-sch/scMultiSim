@@ -155,3 +155,45 @@
 #       92.3944947, 66.1421921, 105.4677530, 0.5729707, 110.5115346)
 #   )
 # })
+test_that("region probabilities and consecutive assignments follow the 1-3 contract", {
+  base_options <- list(
+    GRN = NULL,
+    num.genes = 12,
+    num.cells = 10,
+    num.cifs = 5,
+    tree = Phyla1()
+  )
+
+  expect_silent(.check_opt(c(base_options, list(region.distrib = c(0, 0, 1)))))
+  expect_silent(.check_opt(c(
+    base_options,
+    list(region.distrib = c(0.1, 0.5, 0.4 + sqrt(.Machine$double.eps) / 2))
+  )))
+  for (invalid in list(
+    c(0.1, 0.9),
+    c(0.1, 0.5, NA_real_),
+    c(0.1, 0.5, Inf),
+    c(-0.1, 0.5, 0.6),
+    c(0.1, 0.5, 0.5),
+    c("0.1", "0.5", "0.4")
+  )) {
+    expect_error(
+      .check_opt(c(base_options, list(region.distrib = invalid))),
+      "Option 'region.distrib' is invalid",
+      fixed = TRUE
+    )
+  }
+
+  options <- .check_opt(c(base_options, list(region.distrib = c(0.1, 0.5, 0.4))))
+  N <- list(region = 36, gene = 12)
+  set.seed(1101)
+  map <- .regionToGeneMatrix(1101, N, options)
+
+  expect_identical(dim(map), as.integer(c(N$region, N$gene)))
+  expect_true(all(map %in% c(0, 1)))
+  assignments <- colSums(map)
+  expect_true(all(assignments >= 1 & assignments <= 3))
+  for (gene in seq_len(N$gene)) {
+    expect_true(all(diff(which(map[, gene] == 1)) == 1))
+  }
+})

@@ -876,15 +876,21 @@ sim_true_counts <- function(options, return_summarized_exp = FALSE) {
   # set.seed(seed)
 
   res <- matrix(0, N$region, N$gene)
-  # gene is regulated by 0, 1, or 2 regions
-  regu_by <- sample(c(0, 1, 2), size = N$gene, replace = TRUE, prob = OP("region.distrib"))
-  regu_by_1 <- which(regu_by == 1)
-  regu_by_2 <- which(regu_by == 2)
-  # for genes regulated by 1 region, select a random region
-  res[cbind(sample(seq(N$region), length(regu_by_1), replace = TRUE), regu_by_1)] <- 1
-  # for genes regulated by 2 regions, select 2 consecutive random regions
-  region_idx <- sample(seq(N$region - 1), length(regu_by_2), replace = TRUE) %>% c(., . + 1)
-  res[cbind(region_idx, rep(regu_by_2, 2))] <- 1
+  # Each gene is regulated by one, two, or three consecutive regions. Starts
+  # are sampled independently with replacement, so regions may be reused.
+  regu_by <- sample(c(1, 2, 3), size = N$gene, replace = TRUE, prob = OP("region.distrib"))
+  starts <- vapply(
+    regu_by,
+    \(k) sample.int(N$region - k + 1, size = 1),
+    integer(1)
+  )
+  for (gene in seq_len(N$gene)) {
+    region_idx <- starts[[gene]] + seq_len(regu_by[[gene]]) - 1
+    res[region_idx, gene] <- 1
+  }
+
+  stopifnot(all(res %in% c(0, 1)))
+  stopifnot(all(colSums(res) >= 1 & colSums(res) <= 3))
 
   # return
   res
